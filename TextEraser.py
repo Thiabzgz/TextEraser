@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import cv2
 import pytesseract
 from pytesseract import Output
 import os
+import time
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -21,17 +22,43 @@ def detect_and_remove_text(image_path, output_path):
     img_without_text = cv2.bitwise_and(img, mask)
     cv2.imwrite(output_path, img_without_text)
 
-def process_images_in_folder(input_folder, output_folder, mode):
+def process_images_in_folder(input_folder, output_folder, mode, progress_bar, status_label):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
-    for filename in os.listdir(input_folder):
-        if filename.endswith(('.png', '.jpg', '.jpeg')):
-            input_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
-            print(f"Procesando {filename}...")
-            detect_and_remove_text(input_path, output_path)
-            print(f"Guardado en {output_path}")
+    image_files = [f for f in os.listdir(input_folder) if f.endswith(('.png', '.jpg', '.jpeg'))]
+    total_images = len(image_files)
+    
+    if total_images == 0:
+        messagebox.showerror("Error", "No se encontraron imágenes en la carpeta seleccionada.")
+        return
+    
+    progress_bar["maximum"] = total_images
+    start_time = time.time()
+    
+    for index, filename in enumerate(image_files):
+        input_path = os.path.join(input_folder, filename)
+        output_path = os.path.join(output_folder, filename)
+        detect_and_remove_text(input_path, output_path)
+        progress_bar["value"] = index + 1
+        progress_bar.update()
+        
+        elapsed_time = time.time() - start_time
+        estimated_total_time = (elapsed_time / (index + 1)) * total_images
+        time_remaining = estimated_total_time - elapsed_time
+        status_label.config(text=f"Tiempo restante: {int(time_remaining)} segundos")
+    
+    progress_bar["value"] = total_images
+    status_label.config(text="Proceso completado")
+    
+    response = messagebox.askyesno("Listo", "Las imágenes han sido procesadas. ¿Quieres procesar más imágenes?")
+    
+    if not response:
+        root.quit()
+    else:
+        folder_path.set("")
+        progress_bar["value"] = 0
+        status_label.config(text="")
 
 def start_processing():
     input_folder = folder_path.get()
@@ -42,14 +69,7 @@ def start_processing():
         return
     
     output_folder = os.path.join(input_folder, f'{mode}_processed')
-    process_images_in_folder(input_folder, output_folder, mode)
-    
-    response = messagebox.askyesno("Listo", "Las imágenes han sido procesadas. ¿Quieres procesar más imágenes?")
-    
-    if not response:
-        root.quit()
-    else:
-        folder_path.set("")
+    process_images_in_folder(input_folder, output_folder, mode, progress_bar, status_label)
 
 def select_folder():
     folder_selected = filedialog.askdirectory()
@@ -81,6 +101,12 @@ comic_radio.pack(side=tk.LEFT, padx=5)
 
 manga_radio = tk.Radiobutton(mode_frame, text="Manga", variable=mode_var, value="manga")
 manga_radio.pack(side=tk.LEFT, padx=5)
+
+progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate")
+progress_bar.pack(pady=10)
+
+status_label = tk.Label(root, text="")
+status_label.pack(pady=5)
 
 process_button = tk.Button(root, text="Empezar a Procesar", command=start_processing)
 process_button.pack(pady=20)
