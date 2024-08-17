@@ -5,8 +5,9 @@ from pytesseract import Output
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import threading
+import time
 
-# Configura la ruta de Tesseract-OCR
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def detect_and_remove_text_bubbles(image):
@@ -23,23 +24,10 @@ def detect_and_remove_text_bubbles(image):
         if area < 500:
             continue
         
-        if len(approx) > 4:
-            mask = np.zeros_like(image)
-            cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
-            mean_color = cv2.mean(image, mask=cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY))[:3]
-            cv2.drawContours(image, [contour], -1, mean_color, -1)
-        
-        elif len(approx) == 4:
-            mask = np.zeros_like(image)
-            cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
-            mean_color = cv2.mean(image, mask=cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY))[:3]
-            cv2.drawContours(image, [contour], -1, mean_color, -1)
-        
-        d = pytesseract.image_to_data(image, output_type=Output.DICT)
-        n_boxes = len(d['level'])
-        for i in range(n_boxes):
-            (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])
-            cv2.rectangle(image, (x, y), (x + w, y + h), mean_color, -1)
+        mask = np.zeros_like(image)
+        cv2.drawContours(mask, [contour], -1, (255, 255, 255), -1)
+        mean_color = cv2.mean(image, mask=cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY))[:3]
+        cv2.drawContours(image, [contour], -1, mean_color, -1)
     
     return image
 
@@ -51,6 +39,8 @@ def process_images_in_folder(input_folder, output_folder, mode, progress_bar, st
         os.makedirs(output_folder)
     
     total_images = len(images)
+    start_time = time.time()
+    
     for i, image_name in enumerate(images):
         input_path = os.path.join(input_folder, image_name)
         output_path = os.path.join(output_folder, image_name)
@@ -60,8 +50,12 @@ def process_images_in_folder(input_folder, output_folder, mode, progress_bar, st
         cv2.imwrite(output_path, processed_image)
         
         progress = int((i + 1) / total_images * 100)
+        elapsed_time = time.time() - start_time
+        estimated_total_time = elapsed_time / (i + 1) * total_images
+        remaining_time = estimated_total_time - elapsed_time
+        
         progress_bar['value'] = progress
-        status_label.config(text=f"Procesando {i + 1}/{total_images} imágenes...")
+        status_label.config(text=f"Procesando {i + 1}/{total_images} imágenes... (Tiempo restante: {int(remaining_time)}s)")
         root.update_idletasks()
     
     messagebox.showinfo("Completado", "El procesamiento de imágenes ha finalizado.")
@@ -72,10 +66,8 @@ def process_images_in_folder(input_folder, output_folder, mode, progress_bar, st
     else:
         root.quit()
 
-def select_input_folder():
-    folder_selected = filedialog.askdirectory()
-    input_folder_entry.delete(0, tk.END)
-    input_folder_entry.insert(0, folder_selected)
+def start_processing_thread():
+    threading.Thread(target=start_processing).start()
 
 def start_processing():
     input_folder = input_folder_entry.get()
@@ -87,6 +79,11 @@ def start_processing():
     output_folder = os.path.join(input_folder, 'output')
     
     process_images_in_folder(input_folder, output_folder, mode, progress_bar, status_label)
+
+def select_input_folder():
+    folder_selected = filedialog.askdirectory()
+    input_folder_entry.delete(0, tk.END)
+    input_folder_entry.insert(0, folder_selected)
 
 root = tk.Tk()
 root.title("Text Bubble Remover")
@@ -117,7 +114,7 @@ progress_bar.grid(row=3, column=0, columnspan=3, padx=10, pady=20)
 status_label = tk.Label(root, text="")
 status_label.grid(row=4, column=0, columnspan=3, pady=10)
 
-start_button = tk.Button(root, text="Iniciar Procesamiento", command=start_processing)
+start_button = tk.Button(root, text="Iniciar Procesamiento", command=start_processing_thread)
 start_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 root.mainloop()
