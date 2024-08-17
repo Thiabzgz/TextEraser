@@ -18,9 +18,7 @@ def detect_and_remove_text_bubbles(image):
     contours, _ = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     
     for contour in contours:
-        approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
         area = cv2.contourArea(contour)
-
         if area < 500:
             continue
         
@@ -31,7 +29,7 @@ def detect_and_remove_text_bubbles(image):
     
     return image
 
-def process_images_in_folder(input_folder, output_folder, mode, progress_bar, status_label):
+def process_images_in_folder(input_folder, output_folder, progress_bar, status_label):
     image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']
     images = [f for f in os.listdir(input_folder) if any(f.lower().endswith(ext) for ext in image_extensions)]
     
@@ -75,46 +73,44 @@ def start_processing():
         messagebox.showerror("Error", "Debe seleccionar una carpeta de entrada.")
         return
     
-    mode = mode_var.get()
     output_folder = os.path.join(input_folder, 'output')
     
-    process_images_in_folder(input_folder, output_folder, mode, progress_bar, status_label)
+    process_images_in_folder(input_folder, output_folder, progress_bar, status_label)
 
 def select_input_folder():
     folder_selected = filedialog.askdirectory()
     input_folder_entry.delete(0, tk.END)
     input_folder_entry.insert(0, folder_selected)
 
+# Configuración de la ventana principal
 root = tk.Tk()
 root.title("Text Bubble Remover")
+root.configure(bg="#DDEEFF")  # Cambiar el color de fondo de la ventana
 
-title_label = tk.Label(root, text="Text Bubble Remover", font=("Helvetica", 16))
+# Etiqueta del título
+title_label = tk.Label(root, text="Text Bubble Remover", font=("Helvetica", 18, "bold"), bg="#DDEEFF", fg="#003366")
 title_label.grid(row=0, column=0, columnspan=3, pady=10)
 
-input_folder_label = tk.Label(root, text="Carpeta de entrada:")
-input_folder_label.grid(row=1, column=0, padx=10, pady=10)
+# Etiqueta y entrada para la carpeta de entrada
+input_folder_label = tk.Label(root, text="Carpeta de entrada:", bg="#DDEEFF", fg="#003366", font=("Helvetica", 12))
+input_folder_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
 
-input_folder_entry = tk.Entry(root, width=40)
+input_folder_entry = tk.Entry(root, width=40, font=("Helvetica", 12))
 input_folder_entry.grid(row=1, column=1, padx=10, pady=10)
 
-browse_button = tk.Button(root, text="Buscar...", command=select_input_folder)
+browse_button = tk.Button(root, text="Buscar...", command=select_input_folder, bg="#6699CC", fg="white", font=("Helvetica", 12, "bold"))
 browse_button.grid(row=1, column=2, padx=10, pady=10)
 
-mode_label = tk.Label(root, text="Modo:")
-mode_label.grid(row=2, column=0, padx=10, pady=10)
-
-mode_var = tk.StringVar(value="Manga")
-mode_options = ["Manga", "Cómic"]
-mode_menu = tk.OptionMenu(root, mode_var, *mode_options)
-mode_menu.grid(row=2, column=1, padx=10, pady=10)
-
+# Barra de progreso
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate")
 progress_bar.grid(row=3, column=0, columnspan=3, padx=10, pady=20)
 
-status_label = tk.Label(root, text="")
+# Etiqueta de estado
+status_label = tk.Label(root, text="", bg="#DDEEFF", fg="#003366", font=("Helvetica", 12))
 status_label.grid(row=4, column=0, columnspan=3, pady=10)
 
-start_button = tk.Button(root, text="Iniciar Procesamiento", command=start_processing_thread)
+# Botón para iniciar el procesamiento
+start_button = tk.Button(root, text="Iniciar Procesamiento", command=start_processing_thread, bg="#6699CC", fg="white", font=("Helvetica", 14, "bold"))
 start_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 root.mainloop()
